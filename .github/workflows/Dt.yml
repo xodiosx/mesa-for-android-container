@@ -5,6 +5,13 @@ on:
     inputs:
       mesa_version:
         description: 'Mesa version (branch/tag)'
+name: Build Turnip (Bookworm - tar.xz)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mesa_version:
+        description: 'Mesa version (branch/tag)'
         required: true
         default: 'main'
       api_override:
@@ -47,7 +54,7 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates git ccache build-essential \
+            ca-certificates git ccache build-essential cmake \
             pkg-config python3 python3-mako python3-pip \
             flex bison curl unzip \
             libdrm-dev libexpat1-dev libx11-dev libxext-dev libxdamage-dev \
@@ -55,15 +62,19 @@ jobs:
             libwayland-dev wayland-protocols libvulkan-dev \
             libelf-dev libunwind-dev libarchive-dev
 
+          # Remove old system glslang-tools if present
           apt-get purge -y glslang-tools || true
+
+          # Upgrade meson (Bookworm ships 1.0.1, Mesa needs >= 1.4.0)
           python3 -m pip install --upgrade meson --break-system-packages
 
-          #LATEST_GLSLANG=$(curl -s https://github.com/khronosGroup/glslang/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
-          echo "Installing glslang ${LATEST_GLSLANG}"
-          curl -sSfL "https://github.com/khronosGroup/glslang/releases/download/main-tot/glslang-main-linux-Release.zip" -o glslang.zip
-          unzip -q glslang.zip -d /usr/local
-          chmod +x /usr/local/bin/glslangValidator
-          rm glslang.zip
+          # Build glslang from source (native ARM64 binary)
+          git clone --depth 1 https://github.com/KhronosGroup/glslang.git /tmp/glslang
+          cd /tmp/glslang
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
+          cmake --build build --parallel $(nproc)
+          cmake --install build
+          rm -rf /tmp/glslang
 
           apt-get clean
           rm -rf /var/lib/apt/lists/*
