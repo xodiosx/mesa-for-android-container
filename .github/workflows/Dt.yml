@@ -58,7 +58,7 @@ jobs:
           apt-get purge -y glslang-tools || true
           python3 -m pip install --upgrade meson --break-system-packages
 
-          LATEST_GLSLANG=$(curl -s https://github.com/khronosGroup/glslang/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
+          #LATEST_GLSLANG=$(curl -s https://github.com/khronosGroup/glslang/releases/latest | grep '"tag_name"' | cut -d '"' -f 4)
           echo "Installing glslang ${LATEST_GLSLANG}"
           curl -sSfL "https://github.com/khronosGroup/glslang/releases/download/main-tot/glslang-main-linux-Release.zip" -o glslang.zip
           unzip -q glslang.zip -d /usr/local
