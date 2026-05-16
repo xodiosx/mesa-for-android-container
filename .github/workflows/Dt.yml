@@ -48,7 +48,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             ca-certificates git ccache build-essential \
-            meson ninja-build pkg-config python3 python3-mako glslang-tools \
+            pkg-config python3 python3-mako python3-pip glslang-tools \
             flex bison curl \
             libdrm-dev libexpat1-dev libx11-dev libxext-dev libxdamage-dev \
             libxfixes-dev libxrandr-dev libxshmfence-dev \
@@ -56,6 +56,9 @@ jobs:
             libelf-dev libunwind-dev libarchive-dev
           apt-get clean
           rm -rf /var/lib/apt/lists/*
+
+          # Upgrade meson to latest (Bookworm’s is too old)
+          python3 -m pip install --upgrade meson
 
       - name: Cache ccache
         uses: actions/cache@v4
