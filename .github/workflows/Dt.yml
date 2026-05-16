@@ -3,10 +3,10 @@ name: Build Debian for (Bookworm)
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Branch or tag'
-        required: true
-        default: 'adreno-debian-bookworm'
+      ref:
+        description: 'Branch, tag, or leave blank for default branch'
+        required: false
+        default: ''
       draft_release:
         description: 'Draft a new release'
         required: true
@@ -108,10 +108,30 @@ jobs:
         run: |
           set -euo pipefail
           cd /root
+
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
-          git clone -b "${{ github.event.inputs.tag }}" --depth 1 \
-            "${{ github.server_url }}/${{ github.repository }}.git" mesa-src
+
+          git clone --no-tags "${{ github.server_url }}/${{ github.repository }}.git" mesa-src
+          cd mesa-src
+
+          REF="${{ github.event.inputs.ref }}"
+
+          if [ -n "$REF" ] && git ls-remote --heads origin "$REF" | grep -q .; then
+            echo "Checking out branch: $REF"
+            git checkout -B "$REF" "origin/$REF"
+          elif [ -n "$REF" ] && git ls-remote --tags origin "refs/tags/$REF" | grep -q .; then
+            echo "Checking out tag: $REF"
+            git checkout -B "build-$REF" "refs/tags/$REF"
+          else
+            DEFAULT_REF="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
+            if [ -z "$DEFAULT_REF" ]; then
+              DEFAULT_REF="main"
+            fi
+            echo "Ref not found or empty. Falling back to default branch: $DEFAULT_REF"
+            git fetch origin "$DEFAULT_REF"
+            git checkout -B "$DEFAULT_REF" "origin/$DEFAULT_REF"
+          fi
 
       - name: Build Mesa
         run: |
@@ -136,7 +156,7 @@ jobs:
 
           rm -f *dev* *dbgsym* libosmesa*.deb mesa-va-drivers*.deb mesa-vdpau-drivers*.deb || true
 
-          if [[ "${{ github.event.inputs.tag }}" == *"turnip"* ]]; then
+          if [[ "${{ github.event.inputs.ref }}" == *"turnip"* ]]; then
             find /root -maxdepth 1 -type f -name "*.deb" ! -name "mesa-vulkan-drivers*" -delete
           fi
 
@@ -149,7 +169,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mesa-for-android-container_${{ github.event.inputs.tag }}
+          name: mesa-for-android-container_${{ github.event.inputs.ref || github.ref_name }}
           path: |
             /root/*.deb
             /root/sha256sums.txt
@@ -184,7 +204,7 @@ jobs:
           set -euo pipefail
           version=$(find ./artifacts -type f -name 'mesa-vulkan-drivers*.deb' -print -quit | xargs basename | cut -d'_' -f2)
 
-          if [[ "${{ github.event.inputs.tag }}" == *"turnip"* ]]; then
+          if [[ "${{ github.event.inputs.ref }}" == *"turnip"* ]]; then
             echo "RELEASE_TITLE=turnip-${version}_debian_bookworm" >> "$GITHUB_ENV"
           else
             echo "RELEASE_TITLE=${version}_debian_bookworm" >> "$GITHUB_ENV"
@@ -193,7 +213,7 @@ jobs:
       - name: Create Draft Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag }}
+          tag_name: ${{ github.event.inputs.ref || github.ref_name }}
           name: ${{ env.RELEASE_TITLE }}
           draft: true
           body_path: release_body.md
