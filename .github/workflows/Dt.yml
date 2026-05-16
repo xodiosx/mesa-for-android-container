@@ -61,10 +61,15 @@ jobs:
           # Upgrade meson (Bookworm ships 1.0.1, Mesa needs >= 1.4.0)
           python3 -m pip install --upgrade meson --break-system-packages
 
-          # Build glslang from source (native ARM64 binary)
+          # Build glslang from source (native ARM64, minimal deps)
           git clone --depth 1 https://github.com/KhronosGroup/glslang.git /tmp/glslang
           cd /tmp/glslang
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DENABLE_OPT=OFF \
+            -DENABLE_HLSL=OFF \
+            -DBUILD_TESTING=OFF
           cmake --build build --parallel $(nproc)
           cmake --install build
           rm -rf /tmp/glslang
