@@ -111,7 +111,8 @@ jobs:
           meson setup build /root/mesa \
             -Dvulkan-drivers=freedreno \
             -Dgallium-drivers= \
-            -Dbuildtype=release
+            -Dbuildtype=release \
+            -Dpython=python3.11
 
       - name: Build
         run: ninja -C build
