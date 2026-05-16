@@ -84,7 +84,7 @@ jobs:
           git config --global user.name "GitHub Actions"
 
           # ⚠️ SET THIS TO YOUR PACKAGING REPO URL
-          PACKAGING_REPO="https://github.com/YOUR_ORG/mesa-for-android-container.git"
+          PACKAGING_REPO="https://github.com/xodiosx/mesa-for-android-container.git"
           git clone --no-tags "$PACKAGING_REPO" mesa-src
           cd mesa-src
 
