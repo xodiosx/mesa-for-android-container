@@ -57,7 +57,7 @@ jobs:
           apt-get clean
           rm -rf /var/lib/apt/lists/*
 
-          # Upgrade meson to meet Mesa's requirement
+          # Upgrade meson (Bookworm’s is too old)
           python3 -m pip install --upgrade meson --break-system-packages
 
       - name: Cache ccache
@@ -81,42 +81,22 @@ jobs:
           git clone --depth 1 --branch ${{ github.event.inputs.mesa_version }} \
             https://gitlab.freedesktop.org/mesa/mesa.git /root/mesa
 
-      - name: Apply Turnip pthread→mtx fix (Termux compatibility)
-        run: |
-          cd /root/mesa
-          sed -i 's/pthread_mutex_lock(&dev->pipeline_mutex)/mtx_lock(\&dev->pipeline_mutex)/g' src/freedreno/vulkan/tu_shader.cc
-          sed -i 's/pthread_mutex_unlock(&dev->pipeline_mutex)/mtx_unlock(\&dev->pipeline_mutex)/g' src/freedreno/vulkan/tu_shader.cc
-
-      - name: Override Vulkan API version (if requested)
+      - name: Override Vulkan API version (optional)
         if: github.event.inputs.api_override != ''
         run: |
-          cd /root/mesa
           VER="${{ github.event.inputs.api_override }}"
-          DEVFILE=$(find src/freedreno/vulkan -maxdepth 1 -name 'tu_device.*' -print -quit)
-          [ -z "$DEVFILE" ] && { echo "tu_device file not found"; exit 1; }
-          sed -i "0,/VK_API_VERSION_[0-9_]*/s//VK_API_VERSION_${VER//\./_}/" "$DEVFILE"
+          FILE=$(find /root/mesa/src/freedreno/vulkan -maxdepth 1 \( -name 'tu_device.c' -o -name 'tu_device.cc' \) -print -quit)
+          [ -z "$FILE" ] && { echo "tu_device file not found"; exit 1; }
+          sed -i "0,/VK_API_VERSION_[0-9_]*/s//VK_API_VERSION_${VER//\./_}/" "$FILE"
 
-      - name: Configure Mesa build (Turnip only)
+      - name: Configure Mesa (native, Turnip only)
         run: |
           meson setup build /root/mesa \
             -Dvulkan-drivers=freedreno \
             -Dgallium-drivers= \
-            -Dplatforms=x11,wayland \
-            -Dllvm=disabled \
-            -Dbuildtype=release \
-            -Dprefix=/usr \
-            -Dstrip=true \
-            -Dglx=disabled \
-            -Dgbm=disabled \
-            -Dopengl=false \
-            -Degl=disabled \
-            -Dgles1=disabled \
-            -Dgles2=disabled \
-            -Dshared-glapi=disabled \
-            -Ddri3=disabled \
-            -Dshader-cache=enabled
+            -Dbuildtype=release
 
-      - name: Build Turnip
+      - name: Build
         run: ninja -C build
 
       - name: Save ccache
