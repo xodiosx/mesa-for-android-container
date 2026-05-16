@@ -16,6 +16,10 @@ on:
 permissions:
   contents: write
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ubuntu-24.04-arm
@@ -40,7 +44,7 @@ jobs:
           restore-keys: |
             apt-bookworm-${{ runner.arch }}-
 
-      - name: Install dependencies (FAST)
+      - name: Install dependencies
         run: |
           set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
@@ -65,20 +69,20 @@ jobs:
             quilt \
             git-buildpackage \
             pristine-tar \
-            libxfixes-dev \
-            libarchive-dev \
             libdrm-dev \
             libexpat1-dev \
             libx11-dev \
             libxext-dev \
             libxdamage-dev \
+            libxfixes-dev \
             libxrandr-dev \
             libxshmfence-dev \
             libwayland-dev \
             wayland-protocols \
             libvulkan-dev \
             libelf-dev \
-            libunwind-dev
+            libunwind-dev \
+            libarchive-dev
 
           apt-get clean
           rm -rf /var/lib/apt/lists/*
@@ -103,18 +107,17 @@ jobs:
       - name: Clone repository
         run: |
           set -euo pipefail
-          cd ~
+          cd /root
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git clone -b "${{ github.event.inputs.tag }}" --depth 1 \
             "${{ github.server_url }}/${{ github.repository }}.git" mesa-src
 
       - name: Build Mesa
-        shell: bash
         run: |
           set -euo pipefail
           export CCACHE_DIR=/root/.ccache
-          cd ~/mesa-src
+          cd /root/mesa-src
 
           origtargz
           gbp buildpackage -uc -us -j4 --git-ignore-branch
@@ -127,7 +130,6 @@ jobs:
           key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Collect packages
-        shell: bash
         run: |
           set -euo pipefail
           cd /root
@@ -139,7 +141,9 @@ jobs:
           fi
 
           find /root -maxdepth 1 -type f -name "*.deb" -printf "%f\n" | sort
-          find /root -maxdepth 1 -type f -name "*.deb" -printf "%f\0" | xargs -0 sha256sum | sort -k2 > /root/sha256sums.txt
+          find /root -maxdepth 1 -type f -name "*.deb" -printf "%f\0" \
+            | xargs -0 sha256sum | sort -k2 > /root/sha256sums.txt
+
           cat /root/sha256sums.txt
 
       - name: Upload build artifacts
@@ -164,7 +168,6 @@ jobs:
           path: ./artifacts
 
       - name: Build release notes with checksums
-        shell: bash
         run: |
           set -euo pipefail
           checksums=$(find ./artifacts -type f -name "sha256sums.txt" -exec cat {} \; | awk 'NF>=2 {print $1 "  " $2}' | sort -k2,2)
@@ -177,7 +180,6 @@ jobs:
           printf '%s\n' '```' >> release_body.md
 
       - name: Set release title
-        shell: bash
         run: |
           set -euo pipefail
           version=$(find ./artifacts -type f -name 'mesa-vulkan-drivers*.deb' -print -quit | xargs basename | cut -d'_' -f2)
