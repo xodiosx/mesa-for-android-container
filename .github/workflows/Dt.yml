@@ -48,42 +48,14 @@ jobs:
         run: |
           set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
-
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates \
-            git \
-            ccache \
-            build-essential \
-            meson \
-            ninja-build \
-            pkg-config \
-            python3 \
-            python3-mako \
-            python3-pip \
-            glslang-tools \
-            flex \
-            bison \
-            devscripts \
-            fakeroot \
-            quilt \
-            git-buildpackage \
-            pristine-tar \
-            libdrm-dev \
-            libexpat1-dev \
-            libx11-dev \
-            libxext-dev \
-            libxdamage-dev \
-            libxfixes-dev \
-            libxrandr-dev \
-            libxshmfence-dev \
-            libwayland-dev \
-            wayland-protocols \
-            libvulkan-dev \
-            libelf-dev \
-            libunwind-dev \
-            libarchive-dev
-
+            ca-certificates git ccache build-essential meson ninja-build pkg-config \
+            python3 python3-mako python3-pip glslang-tools flex bison \
+            devscripts fakeroot quilt git-buildpackage pristine-tar \
+            libdrm-dev libexpat1-dev libx11-dev libxext-dev libxdamage-dev libxfixes-dev \
+            libxrandr-dev libxshmfence-dev libwayland-dev wayland-protocols libvulkan-dev \
+            libelf-dev libunwind-dev libarchive-dev
           apt-get clean
           rm -rf /var/lib/apt/lists/*
 
@@ -108,37 +80,54 @@ jobs:
         run: |
           set -euo pipefail
           cd /root
-
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
 
-          git clone --no-tags "${{ github.server_url }}/${{ github.repository }}.git" mesa-src
+          # ⚠️ SET THIS TO YOUR PACKAGING REPO URL
+          PACKAGING_REPO="https://github.com/YOUR_ORG/mesa-for-android-container.git"
+          git clone --no-tags "$PACKAGING_REPO" mesa-src
           cd mesa-src
 
           REF="${{ github.event.inputs.ref }}"
+          PACKAGING_BRANCH="debian/bookworm"   # guaranteed to have debian/
 
-          if [ -n "$REF" ] && git ls-remote --heads origin "$REF" | grep -q .; then
-            echo "Checking out branch: $REF"
-            git checkout -B "$REF" "origin/$REF"
-          elif [ -n "$REF" ] && git ls-remote --tags origin "refs/tags/$REF" | grep -q .; then
-            echo "Checking out tag: $REF"
-            git checkout -B "build-$REF" "refs/tags/$REF"
-          else
-            DEFAULT_REF="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
-            if [ -z "$DEFAULT_REF" ]; then
-              DEFAULT_REF="main"
+          checkout_ref() {
+            local ref="$1"
+            if git show-ref --verify --quiet "refs/remotes/origin/$ref"; then
+              git checkout -B "$ref" "origin/$ref"
+            elif git show-ref --verify --quiet "refs/tags/$ref"; then
+              git checkout -B "build-$ref" "refs/tags/$ref"
+            else
+              return 1
             fi
-            echo "Ref not found or empty. Falling back to default branch: $DEFAULT_REF"
-            git fetch origin "$DEFAULT_REF"
-            git checkout -B "$DEFAULT_REF" "origin/$DEFAULT_REF"
+          }
+
+          if [ -n "$REF" ]; then
+            if ! checkout_ref "$REF"; then
+              echo "ERROR: Could not checkout ref '$REF'"
+              exit 1
+            fi
+          else
+            DEFAULT_REF=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+            [ -z "$DEFAULT_REF" ] && DEFAULT_REF="main"
+            if ! checkout_ref "$DEFAULT_REF" || [ ! -f debian/changelog ]; then
+              echo "Default branch '$DEFAULT_REF' lacks debian/ – falling back to '$PACKAGING_BRANCH'"
+              git fetch origin "$PACKAGING_BRANCH"
+              checkout_ref "$PACKAGING_BRANCH"
+            fi
           fi
+
+          if [ ! -f debian/changelog ]; then
+            echo "ERROR: debian/changelog not found in the checked-out ref"
+            exit 1
+          fi
+          echo "✅ Ready to build – debian/changelog present"
 
       - name: Build Mesa
         run: |
           set -euo pipefail
           export CCACHE_DIR=/root/.ccache
           cd /root/mesa-src
-
           origtargz
           gbp buildpackage -uc -us -j4 --git-ignore-branch
 
@@ -153,17 +142,13 @@ jobs:
         run: |
           set -euo pipefail
           cd /root
-
           rm -f *dev* *dbgsym* libosmesa*.deb mesa-va-drivers*.deb mesa-vdpau-drivers*.deb || true
-
           if [[ "${{ github.event.inputs.ref }}" == *"turnip"* ]]; then
             find /root -maxdepth 1 -type f -name "*.deb" ! -name "mesa-vulkan-drivers*" -delete
           fi
-
           find /root -maxdepth 1 -type f -name "*.deb" -printf "%f\n" | sort
           find /root -maxdepth 1 -type f -name "*.deb" -printf "%f\0" \
             | xargs -0 sha256sum | sort -k2 > /root/sha256sums.txt
-
           cat /root/sha256sums.txt
 
       - name: Upload build artifacts
@@ -191,7 +176,6 @@ jobs:
         run: |
           set -euo pipefail
           checksums=$(find ./artifacts -type f -name "sha256sums.txt" -exec cat {} \; | awk 'NF>=2 {print $1 "  " $2}' | sort -k2,2)
-
           cat > release_body.md <<'EOF'
           ## Checksums
           ```plaintext
@@ -203,7 +187,6 @@ jobs:
         run: |
           set -euo pipefail
           version=$(find ./artifacts -type f -name 'mesa-vulkan-drivers*.deb' -print -quit | xargs basename | cut -d'_' -f2)
-
           if [[ "${{ github.event.inputs.ref }}" == *"turnip"* ]]; then
             echo "RELEASE_TITLE=turnip-${version}_debian_bookworm" >> "$GITHUB_ENV"
           else
