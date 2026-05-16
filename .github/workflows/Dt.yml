@@ -1,4 +1,4 @@
-name: Build Debian for (Bookworm)
+name: Build Mesa (Bookworm Fast)
 
 on:
   workflow_dispatch:
@@ -7,8 +7,12 @@ on:
         description: 'Branch or tag'
         required: true
         default: 'adreno-debian-bookworm'
+      api_override:
+        description: 'Vulkan API version (e.g. 1.4.301)'
+        required: false
+        default: ''
       draft_release:
-        description: 'Draft a new release'
+        description: 'Draft release'
         required: true
         default: false
         type: boolean
@@ -24,13 +28,22 @@ jobs:
       options: --privileged --user root
 
     steps:
-      - name: Speed up APT
+      - name: Prepare APT (safe)
         run: |
+          set -e
           echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/99nolanguages
-          sed -i 's/deb.debian.org/mirrors.edge.kernel.org/g' /etc/apt/sources.list
+
+          if [ -f /etc/apt/sources.list ]; then
+            sed -i 's/deb.debian.org/mirrors.edge.kernel.org/g' /etc/apt/sources.list
+          fi
+
+          if [ -d /etc/apt/sources.list.d ]; then
+            sed -i 's/deb.debian.org/mirrors.edge.kernel.org/g' /etc/apt/sources.list.d/* || true
+          fi
 
       - name: Install dependencies (FAST)
         run: |
+          set -e
           apt update
 
           apt install -y --no-install-recommends \
@@ -49,102 +62,86 @@ jobs:
 
           apt clean
 
-      - name: Cache ccache
-        uses: actions/cache@v5
-        with:
-          path: /root/.ccache
-          key: ccache-${{ runner.os }}-${{ runner.arch }}
-          restore-keys: |
-            ccache-${{ runner.os }}-${{ runner.arch }}
-
       - name: Configure ccache
         run: |
           export CCACHE_DIR=/root/.ccache
           ccache --max-size=2G
-          ccache --zero-stats
-          ccache --show-stats
 
-      - name: Clone repository
+      - name: Clone repo
         run: |
+          set -e
           cd ~
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
-          git clone -b ${{ github.event.inputs.tag }} --depth 1 \
-            ${{ github.server_url }}/${{ github.repository }}.git
+          git clone -b "${{ github.event.inputs.tag }}" --depth 1 \
+            "${{ github.server_url }}/${{ github.repository }}.git" mesa-src
 
-      - name: Build Mesa (FASTER)
+      - name: Apply Vulkan override
+        if: ${{ github.event.inputs.api_override != '' }}
         run: |
+          set -e
+          cd ~/mesa-src
+
+          VER="${{ github.event.inputs.api_override }}"
+          VER_UNDERSCORE=$(echo "$VER" | tr '.' '_')
+
+          FILE=$(find src/freedreno/vulkan -maxdepth 1 \( -name "tu_device.c" -o -name "tu_device.cc" \) | head -n 1)
+
+          if [ -z "$FILE" ]; then
+            echo "ERROR: tu_device file not found"
+            find src/freedreno/vulkan -maxdepth 1 -type f
+            exit 1
+          fi
+
+          echo "Patching $FILE → Vulkan $VER"
+
+          sed -i "0,/VK_API_VERSION_[0-9_]*/s//VK_API_VERSION_${VER_UNDERSCORE}/" "$FILE"
+
+      - name: Build Mesa (fixed)
+        run: |
+          set -e
           export CCACHE_DIR=/root/.ccache
-          cd ~/mesa-for-android-container
+          cd ~/mesa-src
 
           echo "Preparing source..."
           origtargz
 
-          echo "Building Mesa..."
+          echo "Building..."
           gbp buildpackage -uc -us -j4 --git-ignore-branch
-
-          echo "Build done!"
 
       - name: Collect packages
         run: |
+          set -e
           cd ~
 
           rm -f *dev* *dbgsym* libosmesa*.deb \
-                mesa-va-drivers*.deb mesa-vdpau-drivers*.deb
+                mesa-va-drivers*.deb mesa-vdpau-drivers*.deb || true
 
-          if [[ "${{ github.event.inputs.tag }}" == *"turnip"* ]]; then
-            find . -maxdepth 1 -type f -name "*.deb" ! -name "mesa-vulkan-drivers*" -delete
-          fi
+          find . -maxdepth 1 -name "*.deb" -type f -printf "%P\n" | sort
 
-          find . -maxdepth 1 -name "*.deb" -type f -printf "%P\0" \
-            | xargs -0 sha256sum | sort -k2 > sha256sums.txt
-
+          sha256sum *.deb > sha256sums.txt
           cat sha256sums.txt
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: mesa-${{ github.event.inputs.tag }}
+          name: mesa-build
           path: |
             ~/*.deb
             ~/sha256sums.txt
-          retention-days: 90
 
-  draft-release:
+  release:
     if: ${{ github.event.inputs.draft_release == 'true' }}
     needs: build
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v4
         with:
-          path: ./artifacts
+          path: artifacts
 
-      - name: Generate release notes
-        run: |
-          checksums=$(find ./artifacts -name "sha256sums.txt" -exec cat {} \; | sort -k2)
-
-          echo "## Checksums" > release_body.md
-          echo '```plaintext' >> release_body.md
-          echo "$checksums" >> release_body.md
-          echo '```' >> release_body.md
-
-      - name: Set release title
-        run: |
-          version=$(find ./artifacts -name 'mesa-vulkan-drivers*.deb' | head -n1 | xargs basename | cut -d'_' -f2)
-
-          if [[ "${{ github.event.inputs.tag }}" == *"turnip"* ]]; then
-            echo "RELEASE_TITLE=turnip-${version}_debian_bookworm" >> $GITHUB_ENV
-          else
-            echo "RELEASE_TITLE=${version}_debian_bookworm" >> $GITHUB_ENV
-          fi
-
-      - name: Create Draft Release
-        uses: softprops/action-gh-release@v3
+      - name: Create release
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag }}
-          name: ${{ env.RELEASE_TITLE }}
           draft: true
-          body_path: release_body.md
-          files: ./artifacts/**/*.deb
+          tag_name: ${{ github.event.inputs.tag }}
+          name: Mesa Build (${{ github.event.inputs.tag }})
+          files: artifacts/**/*.deb
