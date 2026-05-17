@@ -106,13 +106,15 @@ jobs:
           [ -z "$FILE" ] && { echo "tu_device file not found"; exit 1; }
           sed -i "0,/VK_API_VERSION_[0-9_]*/s//VK_API_VERSION_${VER//\./_}/" "$FILE"
 
+      - name: Create python symlink (fix meson detection)
+        run: ln -s /usr/bin/python3.11 /usr/local/bin/python
+
       - name: Configure Mesa (native, Turnip only)
         run: |
           meson setup build /root/mesa \
             -Dvulkan-drivers=freedreno \
             -Dgallium-drivers= \
-            -Dbuildtype=release \
-            -Dpython=python3.11
+            -Dbuildtype=release
 
       - name: Build
         run: ninja -C build
