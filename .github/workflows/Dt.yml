@@ -42,7 +42,7 @@ jobs:
           restore-keys: |
             apt-bookworm-kgsl-${{ runner.arch }}-
 
-      - name: Install build dependencies + KGSL header
+      - name: Install build dependencies
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
@@ -75,16 +75,17 @@ jobs:
           cmake --install build
           rm -rf /tmp/glslang
 
-          # --- Provide KGSL kernel header (for glibc build) ---
-          mkdir -p /usr/include/linux
-          curl -sSfL https://raw.githubusercontent.com/freedreno/freedreno/master/kgsl/msm_kgsl.h \
-            -o /usr/include/linux/msm_kgsl.h
-          # Also download a minimal sync.h if needed
-          curl -sSfL https://raw.githubusercontent.com/freedreno/mesa/main/src/freedreno/vulkan/sync.h \
-            -o /usr/include/linux/sync.h 2>/dev/null || echo "using system sync.h"
-
           apt-get clean
           rm -rf /var/lib/apt/lists/*
+
+      - name: Provide KGSL headers from Termux sysroot
+        run: |
+          # Download termux-rootfs and extract only the headers we need
+          wget -q https://github.com/xodiosx/Wine-arm64ce/releases/download/wine-14/termux-rootfs.tar
+          mkdir -p /tmp/termux
+          tar xf termux-rootfs.tar -C /tmp/termux data/data/com.termux/files/usr/include
+          echo "Termux KGSL headers extracted to /tmp/termux/data/data/com.termux/files/usr/include"
+          rm termux-rootfs.tar
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -120,12 +121,15 @@ jobs:
 
       - name: Configure Mesa (glibc + KGSL)
         run: |
+          TERMUX_INC="/tmp/termux/data/data/com.termux/files/usr/include"
           meson setup build /root/mesa \
             -Dvulkan-drivers=freedreno \
             -Dgallium-drivers= \
             -Dplatforms=x11 \
             -Dbuildtype=release \
-            -Dfreedreno-kgsl=true
+            -Dfreedreno-kgsl=true \
+            -Dc_args="-I${TERMUX_INC}" \
+            -Dcpp_args="-I${TERMUX_INC}"
 
       - name: Build
         run: ninja -C build
