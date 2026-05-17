@@ -55,7 +55,7 @@ jobs:
             libwayland-dev wayland-protocols libvulkan-dev \
             libelf-dev libunwind-dev libarchive-dev \
             libxcb-randr0-dev libxcb-dri3-dev libxcb-present-dev \
-            libxcb-sync-dev libxcb-xfixes0-dev libxcb-shm0-dev libx11-xcb-dev libx11-xcb1 ninja-build
+            libxcb-sync-dev libxcb-xfixes0-dev libxcb-shm0-dev libx11-xcb-dev libx11-xcb1 ninja-build wget
 
           apt-get purge -y glslang-tools || true
 
