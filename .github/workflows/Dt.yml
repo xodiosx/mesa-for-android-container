@@ -78,14 +78,21 @@ jobs:
           apt-get clean
           rm -rf /var/lib/apt/lists/*
 
-      - name: Provide KGSL headers from Termux sysroot
+      - name: Install KGSL headers from Termux rootfs
         run: |
-          # Download termux-rootfs and extract only the headers we need
+          # Download the same termux-rootfs we already trust
           wget -q https://github.com/xodiosx/Wine-arm64ce/releases/download/wine-14/termux-rootfs.tar
           mkdir -p /tmp/termux
           tar xf termux-rootfs.tar -C /tmp/termux data/data/com.termux/files/usr/include
-          echo "Termux KGSL headers extracted to /tmp/termux/data/data/com.termux/files/usr/include"
           rm termux-rootfs.tar
+
+          # Copy the KGSL-related headers into the system include directory
+          TERMUX_INC="/tmp/termux/data/data/com.termux/files/usr/include"
+          cp -r "$TERMUX_INC"/linux /usr/include/
+          # If there are other needed headers (e.g. sync.h), copy them too
+          if [ -d "$TERMUX_INC"/drm ]; then cp -r "$TERMUX_INC"/drm /usr/include/; fi
+
+          echo "KGSL headers installed."
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -121,15 +128,12 @@ jobs:
 
       - name: Configure Mesa (glibc + KGSL)
         run: |
-          TERMUX_INC="/tmp/termux/data/data/com.termux/files/usr/include"
           meson setup build /root/mesa \
             -Dvulkan-drivers=freedreno \
             -Dgallium-drivers= \
             -Dplatforms=x11 \
             -Dbuildtype=release \
-            -Dfreedreno-kgsl=true \
-            -Dc_args="-I${TERMUX_INC}" \
-            -Dcpp_args="-I${TERMUX_INC}"
+            -Dfreedreno-kgsl=true
 
       - name: Build
         run: ninja -C build
