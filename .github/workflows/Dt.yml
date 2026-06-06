@@ -32,13 +32,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download all assets from the upstream release
+      - name: Check out this repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download upstream release assets
         env:
           SOURCE_OWNER: ${{ inputs.source_owner }}
           SOURCE_REPO: ${{ inputs.source_repo }}
           SOURCE_TAG: ${{ inputs.source_tag }}
         run: |
           set -euo pipefail
+          mkdir -p release-assets
 
           python3 - <<'PY'
           import json
@@ -85,7 +91,7 @@ jobs:
                   shutil.copyfileobj(r, f)
           PY
 
-      - name: Publish mirrored release
+      - name: Publish release in this repository
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_OWNER: ${{ inputs.source_owner }}
@@ -99,10 +105,11 @@ jobs:
           files=(release-assets/*)
           notes="Mirrored from ${SOURCE_OWNER}/${SOURCE_REPO} release ${SOURCE_TAG}"
 
-          if gh release view "$TARGET_TAG" >/dev/null 2>&1; then
-            gh release delete "$TARGET_TAG" --yes
+          if gh release view "$TARGET_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$TARGET_TAG" --repo "$GITHUB_REPOSITORY" --yes
           fi
 
           gh release create "$TARGET_TAG" "${files[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
             --title "$TARGET_TITLE" \
             --notes "$notes"
