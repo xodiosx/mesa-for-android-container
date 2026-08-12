@@ -19,7 +19,7 @@ Forked From [Mesa - The 3D Graphics Library](https://gitlab.freedesktop.org/mesa
 |              GPU               | OpenGL | OpenGL ES | Vulkan |
 | :----------------------------: | :----: | :-------: | :----: |
 |         **Adreno 660**         |  ✔️支持  |   ✔️支持    |  ✔️支持  |
-| **Adreno 710/720/730/735/740/750** |  ✔️支持  |   ✔️支持    |  ✔️支持  |
+| **Adreno 710/720/722/730/735/740/750** |  ✔️支持  |   ✔️支持    |  ✔️支持  |
 |       **Adreno 810/829/830/840**       |  ✔️支持  |   ✔️支持    |  ✔️支持  |
 
 实验性支持（by [**whitebelyash**](https://github.com/whitebelyash)）：**Adreno 825**
@@ -39,7 +39,7 @@ Forked From [Mesa - The 3D Graphics Library](https://gitlab.freedesktop.org/mesa
 |    Debian 13     |            [25.0.7-2+deb13u1](https://github.com/lfdevs/mesa-for-android-container/releases/tag/debian%2F25.0.7-2-adreno)            |            [turnip-25.0.7-2+deb13u1](https://github.com/lfdevs/mesa-for-android-container/releases/tag/debian%2F25.0.7-2-turnip)            |
 | Ubuntu 24.04 LTS | [25.0.7-0ubuntu0.24.04.2](https://github.com/lfdevs/mesa-for-android-container/releases/tag/import%2F25.0.7-0ubuntu0.24.04.2-adreno) | [turnip-25.0.7-0ubuntu0.24.04.2](https://github.com/lfdevs/mesa-for-android-container/releases/tag/import%2F25.0.7-0ubuntu0.24.04.2-turnip) |
 |    Fedora 43     |             [25.2.7-4.fc43](https://github.com/lfdevs/mesa-for-android-container/releases/tag/mesa-25.2.7-4.fc43-adreno)             |               [turnip-25.2.7-4.fc43](https://github.com/lfdevs/mesa-for-android-container/releases/tag/turnip-25.2.7-4.fc43)                |
-|    Arch Linux    |               [26.2.0-2](https://github.com/lfdevs/mesa-for-android-container/releases/tag/mesa-26.2.0-devel-20260511)               |              [turnip-26.2.0-2](https://github.com/lfdevs/mesa-for-android-container/releases/tag/turnip-26.2.0-devel-20260511)              |
+|    Arch Linux    |               [26.2.0-5](https://github.com/lfdevs/mesa-for-android-container/releases/tag/mesa-26.2.0-devel-20260709)               |              [turnip-26.2.0-5](https://github.com/lfdevs/mesa-for-android-container/releases/tag/turnip-26.2.0-devel-20260709)              |
 
 ### 直接解压
 
@@ -55,17 +55,19 @@ Forked From [Mesa - The 3D Graphics Library](https://gitlab.freedesktop.org/mesa
 |   Ubuntu 25.10   | `ubuntu_questing_arm64` |
 | Ubuntu 26.04 LTS | `ubuntu_resolute_arm64` |
 |    Fedora 43     |   `fedora_43_arm64`    |
+|    Fedora 44     |   `fedora_44_arm64`    |
 |    Arch Linux    |   `archlinux_arm64`    |
 |    Void Linux    |      `void_arm64`      |
+|    Alpine 3.24   |   `alpine_3.24_arm64`  |
 
-1. 前往 [Releases](https://github.com/lfdevs/mesa-for-android-container/releases) 下载`.tar.gz`格式的安装包。请注意文件名中的 Linux 发行版后缀，如`debian_trixie_arm64`，只能安装发行版匹配的安装包。对于 **Adreno 7xx**，一般先解压标准安装包（包含 Freedreno），再解压未打补丁的 Turnip 安装包。两者最新的 Release 如下：
+1. 前往 [Releases](https://github.com/lfdevs/mesa-for-android-container/releases) 下载`.tar.gz`格式的安装包。请注意文件名中的 Linux 发行版后缀，如`debian_trixie_arm64`，只能安装发行版匹配的安装包。
 
-|                                                         标准安装包                                                         |                                                        未打补丁的 Turnip 安装包                                                        |
-| :-------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------: |
-| [26.2.0-devel-20260511](https://github.com/lfdevs/mesa-for-android-container/releases/tag/mesa-26.2.0-devel-20260511) | [turnip-26.2.0-devel-20260511](https://github.com/lfdevs/mesa-for-android-container/releases/tag/turnip-26.2.0-devel-20260511) |
+| 标准安装包 | 未打补丁的 Turnip 安装包（通常不需要） |
+| :-: | :-: |
+| [26.2.0-devel-20260709](https://github.com/lfdevs/mesa-for-android-container/releases/tag/mesa-26.2.0-devel-20260709) | [turnip-26.2.0-devel-20260709](https://github.com/lfdevs/mesa-for-android-container/releases/tag/turnip-26.2.0-devel-20260709) |
 
 > [!NOTE]
-> 对于 Adreno 8XX （尤其是 **830 & 840**），现在应该不再需要安装未打补丁的 Turnip 驱动了。标准安装包中打了补丁的 Turnip 驱动应该能正常运行。
+> 对于 Adreno 7XX & 8XX，现在应该不再需要安装未打补丁的 Turnip 驱动了。标准安装包中打了补丁的 Turnip 驱动应该能正常运行。
 
 若需要尽可能新的 Mesa 上游特性，可以使用**Turnip 每周构建**：[turnip-weekly](https://github.com/lfdevs/mesa-for-android-container/releases/tag/turnip-weekly)
 
@@ -77,8 +79,7 @@ Forked From [Mesa - The 3D Graphics Library](https://gitlab.freedesktop.org/mesa
 2. 直接将安装包解压到根目录。
 
 ```bash
-sudo tar -zxvf mesa-for-android-container_26.0.0-devel-xxxxxxxx_debian_trixie_arm64.tar.gz -C /
-sudo tar -zxvf turnip_26.0.0-devel-xxxxxxxx_debian_trixie_arm64.tar.gz -C /
+sudo tar -zxvf mesa-for-android-container_26.2.0-devel-xxxxxxxx_debian_trixie_arm64.tar.gz -C /
 ```
 3. 刷新动态链接器缓存。
 
@@ -90,7 +91,7 @@ sudo ldconfig
 
 ```bash
 # 复制这条命令输出的文件列表
-tar tf mesa-for-android-container_26.0.0-devel-xxxxxxxx_debian_trixie_arm64.tar.gz | grep -v '/$' | tr '\n' ' ' ; echo
+tar tf mesa-for-android-container_26.2.0-devel-xxxxxxxx_debian_trixie_arm64.tar.gz | grep -v '/$' | tr '\n' ' ' ; echo
 cd /
 # 替换 <file-list> 为实际的文件列表
 sudo rm <file-list>
@@ -104,32 +105,36 @@ sudo dnf reinstall mesa-filesystem mesa-libglapi mesa-libgbm mesa-libEGL mesa-li
 sudo pacman -S mesa mesa-docs opencl-mesa vulkan-freedreno vulkan-mesa-implicit-layers vulkan-mesa-layers
 ```
 ## 使用
-在运行特定程序时指定环境变量`MESA_LOADER_DRIVER_OVERRIDE`和`TU_DEBUG`，如：
+在运行特定程序时指定环境变量`MESA_LOADER_DRIVER_OVERRIDE`，如：
 
 ```bash
-MESA_LOADER_DRIVER_OVERRIDE=kgsl TU_DEBUG=noconform glmark2
+MESA_LOADER_DRIVER_OVERRIDE=kgsl glmark2
 ```
+
 或者将其添加到`/etc/environment`文件中以便在开启容器时自动加载：
 
 ```plaintext
 MESA_LOADER_DRIVER_OVERRIDE=kgsl
-TU_DEBUG=noconform
 ```
+
+> [!TIP]
+> 若运行某些程序或游戏时出现画面撕裂问题，可添加以下两个环境变量以强制开启垂直同步：
+> ```bash
+> vblank_mode=3 MESA_VK_WSI_PRESENT_MODE=mailbox
+> ```
+
 ## 开发
 如果你是开发者，想要构建本项目的驱动或贡献代码，请参阅[开发文档](../common/development.md)。
 
 ## 基准测试
 详细的测试结果：[benchmark-result](../common/benchmark-result.md)
 
-|        设备         |     型号     |        SoC         |    GPU     | glmark2 | glmark2-es2 | vkmark |
-| :---------------: | :--------: | :----------------: | :--------: | ------: | ----------: | -----: |
-|   Redmi K40 Pro   | M2012K11G  |      高通骁龙 888      | Adreno 660 |     842 |         771 |   1170 |
-| Xiaomi Pad 6 Pro  | 23046RP50C |   高通骁龙 8+ Gen 1    | Adreno 730 |    1169 |        1143 |    263 |
-|   REDMI K80 Pro   | 24122RKC7C |    高通骁龙 8 Elite    | Adreno 830 |    3081 |        3083 |    308 |
-| Xiaomi 17 Pro Max | 2509FPN0BC | 高通骁龙 8 Elite Gen 5 | Adreno 840 |    2947 |        2901 |    未测试 |
-|    OnePlus 15     |   PLK110   | 高通骁龙 8 Elite Gen 5 | Adreno 840 |    3574 |        3621 |    未测试 |
-
-**PS:** Xiaomi 17 Pro Max 执行基准测试时连接了电源，性能有折损，正常情况下实际分数会更高。
+| 设备 | SoC | GPU | 容器类型 | glmark2 | glmark2-es2 | vkmark |
+| :-: | :-: | :-: | :-: | -: | -: | -: |
+| Redmi K40 Pro | 骁龙 888 | Adreno 660 | LXC | 842 | 771 | 1170 |
+| Xiaomi Pad 6 Pro | 骁龙 8+ Gen 1 | Adreno 730 | Chroot | 1360 | 1222 | 2669 |
+| REDMI K80 Pro | 骁龙 8 Elite | Adreno 830 | PRoot | 2211 | 2206 | 1153 |
+| OnePlus 15 | 骁龙 8 Elite Gen 5 | Adreno 840 | PRoot | 3574 | 3621 | 未测试 |
 
 ## 感谢
   - [Lucas Fryzek](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/21570)：Mesa Freedreno 驱动的 KGSL 后端代码的作者。
@@ -139,3 +144,12 @@ TU_DEBUG=noconform
   - [whitebelyash](https://github.com/whitebelyash/mesa-tu8)：为 Adreno 825 添加实验性支持。
   - [Termux 维护团队及贡献者](https://github.com/termux/termux-packages/tree/master/packages/mesa)：为 Mesa 驱动在 Termux 上的正常运行开发了一系列的补丁。
 
+## Star 历史
+
+<a href="https://www.star-history.com/?repos=lfdevs%2Fmesa-for-android-container&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=lfdevs/mesa-for-android-container&type=date&theme=dark&legend=top-left&sealed_token=f_dmxNgIuqmmKjmrOkhU7KUe8lBmL7tzUYuGN6079kOcgw8MpydWLZzyqBVtWaGXLNp4RkqgRycjHZrfRbuiCCulhb8LrNAdqB1Y_g8_9Jpb3AKRizW4C6hWR_z5YCw58SBuirNJMIJxrlvXInHCv0omeS98I4ONf7d1OOeaWGdqKT3VsE5npYReXBC1" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=lfdevs/mesa-for-android-container&type=date&legend=top-left&sealed_token=f_dmxNgIuqmmKjmrOkhU7KUe8lBmL7tzUYuGN6079kOcgw8MpydWLZzyqBVtWaGXLNp4RkqgRycjHZrfRbuiCCulhb8LrNAdqB1Y_g8_9Jpb3AKRizW4C6hWR_z5YCw58SBuirNJMIJxrlvXInHCv0omeS98I4ONf7d1OOeaWGdqKT3VsE5npYReXBC1" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=lfdevs/mesa-for-android-container&type=date&legend=top-left&sealed_token=f_dmxNgIuqmmKjmrOkhU7KUe8lBmL7tzUYuGN6079kOcgw8MpydWLZzyqBVtWaGXLNp4RkqgRycjHZrfRbuiCCulhb8LrNAdqB1Y_g8_9Jpb3AKRizW4C6hWR_z5YCw58SBuirNJMIJxrlvXInHCv0omeS98I4ONf7d1OOeaWGdqKT3VsE5npYReXBC1" />
+ </picture>
+</a>
